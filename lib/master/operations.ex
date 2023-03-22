@@ -53,13 +53,19 @@ defmodule Master.Operations do
   end
   def touch_operation(parent_folder_path, file_name) do
     # make sure that the parent_folder_path ends with a "/" and file name has no "/"
+    # IO.inspect(parent_folder_path)
     case Database.FileAccess.does_file_exist([folder_path: parent_folder_path, file_name: file_name]) do
       {:ok, "file exists", _} ->
         {:error, "file with this name already exists"}
       {:error, "file doesn't exist"} ->
-        Database.FileAccess.write_to_file_access_table(
-          [folder_path: parent_folder_path, file_name: file_name, file_size: 0, type: "file"])
-        {:ok, :write_successful}
+        case Database.FileAccess.does_folder_exist([folder_path: parent_folder_path]) do
+          {:ok, "folder exists", _} ->
+            Database.FileAccess.write_to_file_access_table(
+              [folder_path: parent_folder_path, file_name: file_name, file_size: 0, type: "file"])
+            {:ok, "write_successful"}
+          {:error, "folder doesn't exist"} ->
+            {:error, "invalid path"}
+        end
     end
   end
 
@@ -77,12 +83,18 @@ defmodule Master.Operations do
     # make sure that the parent_folder_path ends with a "/" and folder name has no "/"
     case Database.FileAccess.does_folder_exist([folder_path: parent_folder_path<>folder_name<>"/"]) do
       {:ok, "folder exists", _} ->
-        {:error, "folder exists"}
+        {:error, "folder already exists"}
       {:error, "folder doesn't exist"} ->
-        Database.FileAccess.write_to_file_access_table(
-          [folder_path: parent_folder_path, file_name: folder_name, file_size: 0, type: "folder"])
-        Database.FileAccess.write_to_file_access_table(
-          [folder_path: parent_folder_path<>folder_name<>"/", file_name: "", file_size: 0, type: "folder"])
+        case Database.FileAccess.does_folder_exist([folder_path: parent_folder_path]) do
+          {:ok, "folder exists", _} ->
+            Database.FileAccess.write_to_file_access_table(
+              [folder_path: parent_folder_path, file_name: folder_name, file_size: 0, type: "folder"])
+            Database.FileAccess.write_to_file_access_table(
+              [folder_path: parent_folder_path<>folder_name<>"/", file_name: "", file_size: 0, type: "folder"])
+            {:ok, "write_successful"}
+          {:error, "folder doesn't exist"} ->
+            {:error, "invalid path"}
+        end
     end
   end
 
@@ -90,8 +102,14 @@ defmodule Master.Operations do
   @doc """
     mimics the UNIX command "cd"
   """
-  def cd_operation() do
-
+  def cd_operation(parent_folder_path) do
+    # IO.inspect(parent_folder_path)
+    case Database.FileAccess.does_folder_exist([folder_path: parent_folder_path]) do
+      {:ok, "folder exists", _} ->
+        {:ok, parent_folder_path}
+      {:error, "folder doesn't exist"} ->
+        {:error, "invlaid path"}
+    end
   end
 
 

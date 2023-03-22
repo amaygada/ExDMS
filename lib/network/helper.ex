@@ -9,13 +9,28 @@ defmodule Network.Helper do
   """
   def check_alive(node) do
     case Node.ping(node) do
-      :ping ->
+      :pong ->
         {:ok, :alive}
       :pang ->
         {:error, :down}
       _ ->
-        {:error, :unknown}
+        {:error, Node.ping(node)}
     end
+  end
+  def check_alive(node, n) when n>0 do
+    case Node.ping(node) do
+      :pong ->
+        {:ok, :alive}
+      :pang ->
+        IO.puts("Unable to reach "<>Kernel.inspect(node)<>" Trying again in 10 seconds")
+        :timer.sleep(10000)
+        check_alive(node, n-1)
+      _ ->
+        {:error, Node.ping(node)}
+    end
+  end
+  def check_alive(node, 0) do
+    {:error, :down}
   end
 
 

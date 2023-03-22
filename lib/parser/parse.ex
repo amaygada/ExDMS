@@ -13,6 +13,11 @@ defmodule Parser.Parse do
 
   def isolate_command(h, rest) do
     case h do
+      #WORKER
+      "worker_info" ->
+        {:worker_info, rest}
+
+      #CLIENT
       "ls" ->
         {:ls, rest}
       "mkdir" ->

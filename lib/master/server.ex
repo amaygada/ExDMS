@@ -45,26 +45,12 @@ defmodule Master.TCPServer do
   defp serve(socket) do
     case read_line(socket) do
       {:ok, data} ->
-        # do operation depending on data received here
         handle_request(Parser.Parse.parse(data), socket)
         serve(socket)
       {:error, err} ->
         IO.puts(IO.ANSI.red() <> "Connection has been terminated  =>  Reason: " <> Atom.to_string(err) <> IO.ANSI.reset())
     end
   end
-
-
-  defp handle_request({:ls, rest}, socket) do
-    [path] = rest
-    case Master.Operations.ls_operation(path) do
-      {:ok, reply} ->
-        write_line("ok "<>reply<>" \n", socket)
-      {:error, e} ->
-        write_line("error "<>e<>" \n", socket)
-    end
-
-  end
-
 
   # @doc """
   #   Read message from client over TCP
@@ -95,6 +81,67 @@ defmodule Master.TCPServer do
       _ ->
         IO.puts(IO.ANSI.red() <> "Connection has been terminated. Client seems to be down :(" <> IO.ANSI.reset())
         {:error, reply}
+    end
+  end
+
+
+  ################################################## WORKER HANDLE REQUESTS ######################################################
+
+
+
+  ################################################## CLIENT HANDLE REQUESTS #######################################################
+  @doc """
+    Handle Requests and send reply via tcp
+  """
+  defp handle_request({:ls, rest}, socket) do
+    [path] = rest
+    path = case path do
+      "/" ->
+        "/"
+      _ ->
+        path<>"/"
+    end
+    case Master.Operations.ls_operation(path) do
+      {:ok, reply} ->
+        write_line("ok "<>reply<>" \n", socket)
+      {:error, e} ->
+        write_line("error "<>e<>" \n", socket)
+    end
+  end
+
+  defp handle_request({:touch, rest}, socket) do
+    [parent_folder_path, file_name] = rest
+    case Master.Operations.touch_operation(parent_folder_path, file_name) do
+      {:ok, reply} ->
+        write_line("ok "<>reply<>" \n", socket)
+      {:error, e} ->
+        write_line("error "<>e<>" \n", socket)
+    end
+  end
+
+  defp handle_request({:mkdir, rest}, socket) do
+    [parent_folder_path, folder_name] = rest
+    case Master.Operations.mkdir_operation(parent_folder_path, folder_name) do
+      {:ok, reply} ->
+        write_line("ok "<>reply<>" \n", socket)
+      {:error, e} ->
+        write_line("error "<>e<>" \n", socket)
+    end
+  end
+
+  defp handle_request({:cd, rest}, socket) do
+    [path] = rest
+    path = case path do
+      "/" ->
+        "/"
+      _ ->
+        path<>"/"
+    end
+    case Master.Operations.cd_operation(path) do
+      {:ok, reply} ->
+        write_line("ok "<>reply<>" \n", socket)
+      {:error, e} ->
+        write_line("error "<>e<>" \n", socket)
     end
   end
 
