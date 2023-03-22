@@ -107,7 +107,18 @@ defmodule Client.StateServer do
         reply = :gen_tcp.send(state["socket"], "touch "<>parent<>" "<>child<>"\n")
         case reply do
           :ok ->
-            {:reply, {:ok, :sent}, state}
+            case receive_message(state["socket"]) do
+              {:ok, data} ->
+                output = Parser.Parse.parse_response(data)
+                case output do
+                  {:ok, data} ->
+                    {:reply, {:ok, data}, state}
+                  {:error, e} ->
+                    {:reply, {:error, e}, state}
+                end
+              {:error, r} ->
+                {:reply, {:error, r}, state}
+            end
           _ ->
             IO.puts(IO.ANSI.red() <> "Connection has been terminated. Master seems to be down :(" <> IO.ANSI.reset())
             {:reply, {:error, reply}, state}
@@ -125,7 +136,18 @@ defmodule Client.StateServer do
         reply = :gen_tcp.send(state["socket"], "mkdir "<>parent<>" "<>child<>"\n")
         case reply do
           :ok ->
-            {:reply, {:ok, :sent}, state}
+            case receive_message(state["socket"]) do
+              {:ok, data} ->
+                output = Parser.Parse.parse_response(data)
+                case output do
+                  {:ok, data} ->
+                    {:reply, {:ok, data}, state}
+                  {:error, e} ->
+                    {:reply, {:error, e}, state}
+                end
+              {:error, r} ->
+                {:reply, {:error, r}, state}
+            end
           _ ->
             IO.puts(IO.ANSI.red() <> "Connection has been terminated. Master seems to be down :(" <> IO.ANSI.reset())
             {:reply, {:error, reply}, state}
@@ -143,7 +165,19 @@ defmodule Client.StateServer do
         reply = :gen_tcp.send(state["socket"], "cd "<>path<>"\n")
         case reply do
           :ok ->
-            {:reply, {:ok, :sent}, state}
+            case receive_message(state["socket"]) do
+              {:ok, data} ->
+                output = Parser.Parse.parse_response(data)
+                case output do
+                  {:ok, data} ->
+                    state = %{state | "current_directory" => data}
+                    {:reply, {:ok, data}, state}
+                  {:error, e} ->
+                    {:reply, {:error, e}, state}
+                end
+              {:error, r} ->
+                {:reply, {:error, r}, state}
+            end
           _ ->
             IO.puts(IO.ANSI.red() <> "Connection has been terminated. Master seems to be down :(" <> IO.ANSI.reset())
             {:reply, {:error, reply}, state}
@@ -151,6 +185,11 @@ defmodule Client.StateServer do
       {:error, _}->
         {:reply, {:error, "unable to parse command"}, state}
     end
+  end
+
+  @impl true
+  def handle_call({:send_tcp, :pwd, rest}, _from, state) do
+    {:reply, {:ok, state["current_directory"]}, state}
   end
 
 
@@ -179,14 +218,16 @@ defmodule Client.StateServer do
   """
   def connect(server) do
     reply = GenServer.call(server, {:connect})
+    IO.inspect(reply)
     case reply do
       {:ok, _socket} ->
         IO.puts(IO.ANSI.green() <> "CLIENT CONNECTED TO MASTER" <> IO.ANSI.reset())
         IO.puts("")
       {:error, {:error, reason}} ->
         IO.puts(IO.ANSI.red() <> "Error in connecting to the Master. Error Description: #{reason}" <> IO.ANSI.reset())
-        IO.puts(IO.ANSI.red() <> "Try connecting manually using the command:" <> IO.ANSI.reset())
-        IO.puts("    " <> IO.ANSI.blue() <> "Client.StateServer.connect(Client.StateServer)" <> IO.ANSI.reset())
+        IO.puts(IO.ANSI.red() <> "Trying again in 10 seconds:" <> IO.ANSI.reset())
+        :timer.sleep(10000)
+        connect(server)
     end
   end
 
@@ -204,6 +245,10 @@ defmodule Client.StateServer do
         GenServer.call(Client.StateServer, {:send_tcp, :mkdir, rest})
       {:cd, rest} ->
         GenServer.call(Client.StateServer, {:send_tcp, :cd, rest})
+      {:pwd, rest} ->
+        GenServer.call(Client.StateServer, {:send_tcp, :pwd, rest})
+      {:invalid} ->
+        {:error, "INVALID COMMAND"}
     end
     # GenServer.call(Client.StateServer, {:send_tcp, message})
   end

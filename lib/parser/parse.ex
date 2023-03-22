@@ -21,6 +21,8 @@ defmodule Parser.Parse do
         {:touch, rest}
       "cd" ->
         {:cd, rest}
+      "pwd" ->
+        {:pwd, rest}
       _ ->
         {:invalid}
     end

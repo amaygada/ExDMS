@@ -22,12 +22,10 @@ defmodule Client do
     IO.inspect(Network.Config.get_node_map())
     IO.puts("")
 
-    #waits for master to be alive and connects to it
-
-
     children = [
       {Client.StateServer, name: Client.StateServer},
-      {Task, fn -> Client.StateServer.connect(Client.StateServer) end}
+      {Task, fn -> Client.StateServer.connect(Client.StateServer) end},
+      {Client.TCPSupervisor, name: Client.TCPSupervisor}
     ]
 
     opts = [strategy: :one_for_one, name: Client.Supervisor]
