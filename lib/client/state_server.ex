@@ -35,9 +35,16 @@ defmodule Client.StateServer do
       "base_directory" => "/",
       "master_ip" => master_ip,
       "port" => port,
-      "socket" => ""
+      "socket" => "",
+      "worker_socket" => %{"workera" => "", "workerb" => "", "workerc" => ""}
     }
     {:ok, init_state}
+  end
+
+
+  @impl true
+  def handle_info(msg, state) do
+    {:noreply, state}
   end
 
 
@@ -188,8 +195,84 @@ defmodule Client.StateServer do
   end
 
   @impl true
-  def handle_call({:send_tcp, :pwd, rest}, _from, state) do
+  def handle_call({:send_tcp, :pwd, _rest}, _from, state) do
     {:reply, {:ok, state["current_directory"]}, state}
+  end
+
+  @impl true
+  def handle_call({:send_tcp, :cpFromLocal, rest}, _from, state) do
+    t = :os.system_time(:millisecond)
+    case Parser.Parse.break({:cpFromLocal, rest, state["current_directory"]}) do
+      {:ok, local_path, {dfs_path_parent, dfs_path_file}} ->
+        # get local file size
+        case Client.Helper.get_file_size(local_path) do
+          {:ok, size} ->
+            reply = :gen_tcp.send(state["socket"], "cpFromLocal "<>Kernel.inspect(size)<>" "<>dfs_path_parent<>" "<>dfs_path_file<>"\n")
+            case reply do
+              :ok ->
+                case receive_message(state["socket"]) do
+                  {:ok, data} ->
+                    output = Parser.Parse.parse_response(data)
+                    case output do
+                      {:ok, data} ->
+                        plan_map = Jason.decode!(data)
+                        Client.Helper.write_data(plan_map, size, local_path, dfs_path_parent<>dfs_path_file)
+                        IO.inspect(:os.system_time(:millisecond) - t)
+                        {:reply, {:ok, "Write complete"}, state}
+                      {:error, e} ->
+                        {:reply, {:error, e}, state}
+                    end
+                  {:error, r} ->
+                    {:reply, {:error, r}, state}
+                end
+              _ ->
+                IO.puts(IO.ANSI.red() <> "Connection has been terminated. Master seems to be down :(" <> IO.ANSI.reset())
+                {:reply, {:error, reply}, state}
+            end
+          {:error, _reason} ->
+            {:reply, {:error, "Invalid local file path"}, state}
+          _ ->
+            {:reply, Parser.Parse.break({:cpFromLocal, rest, state["current_directory"]}), state}
+        end
+      {:error, e} ->
+        {:reply, {:error, e}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:send_tcp, :cpToLocal, rest}, _from, state) do
+    case Parser.Parse.break({:cpToLocal, rest, state["current_directory"]}) do
+      {:ok, local_path, {dfs_path_parent, dfs_path_file}} ->
+        #check if local file path doesn't exist exists
+        case File.exists?(local_path) do
+          true ->
+            {:reply, {:error, "Local file path exists. DFS won't copy into the file to prevent overriding of possible data"}, state}
+          false ->
+            #check if dfs path is valid
+            reply = :gen_tcp.send(state["socket"], "cpToLocal "<>local_path<>" "<>dfs_path_parent<>" "<>dfs_path_file<>"\n")
+            case reply do
+              :ok ->
+                case receive_message(state["socket"]) do
+                  {:ok, data} ->
+                    output = Parser.Parse.parse_response(data)
+                    case output do
+                      {:ok, data} ->
+                        Client.Helper.read_files_sequentially(Jason.decode!(data), local_path, dfs_path_parent<>dfs_path_file)
+                        {:reply, {:ok, "File touch done"}, state}
+                      {:error, e} ->
+                        {:reply, {:error, e}, state}
+                    end
+                  {:error, r} ->
+                    {:reply, {:error, r}, state}
+                end
+              _ ->
+                IO.puts(IO.ANSI.red() <> "Connection has been terminated. Master seems to be down :(" <> IO.ANSI.reset())
+                {:reply, {:error, reply}, state}
+            end
+        end
+      {:error, e} ->
+        {:reply, {:error, e}, state}
+    end
   end
 
 
@@ -247,6 +330,10 @@ defmodule Client.StateServer do
         GenServer.call(Client.StateServer, {:send_tcp, :cd, rest})
       {:pwd, rest} ->
         GenServer.call(Client.StateServer, {:send_tcp, :pwd, rest})
+      {:cpFromLocal, rest} ->
+        GenServer.call(Client.StateServer, {:send_tcp, :cpFromLocal, rest})
+      {:cpToLocal, rest} ->
+        GenServer.call(Client.StateServer, {:send_tcp, :cpToLocal, rest})
       {:invalid} ->
         {:error, "INVALID COMMAND"}
     end

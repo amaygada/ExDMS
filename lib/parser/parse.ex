@@ -23,6 +23,10 @@ defmodule Parser.Parse do
         {:cd, rest}
       "pwd" ->
         {:pwd, rest}
+      "cpFromLocal" ->
+        {:cpFromLocal, rest}
+      "cpToLocal" ->
+        {:cpToLocal, rest}
       _ ->
         {:invalid}
     end
@@ -140,6 +144,32 @@ defmodule Parser.Parse do
     end
   end
 
+  @doc """
+    Handles the copyFromLocal command
+    cpFromLocal local_path dfspath
+  """
+  def break({:cpFromLocal, rest, cd}) do
+    case rest do
+      [local_path, dfs_path] ->
+        {:ok, local_path, extract_parent_child_from_path(dfs_path, cd)}
+      _ ->
+        {:error, "cpFromLocal takes 2 arguments: local_path, dfs_path"}
+    end
+  end
+
+  @doc """
+    Handles the copyToLocal command
+    cpFromLocal local_path dfspath
+  """
+  def break({:cpToLocal, rest, cd}) do
+    case rest do
+      [local_path, dfs_path] ->
+        {:ok, local_path, extract_parent_child_from_path(dfs_path, cd)}
+      _ ->
+        {:error, "cpToLocal takes 2 arguments: local_path, dfs_path"}
+    end
+  end
+
 
   def parse(cmd) do
     {h, rest} = split_string(cmd)
@@ -157,5 +187,15 @@ defmodule Parser.Parse do
     end
   end
 
+  def parse_worker_response(resp) do
+    resp = :erlang.iolist_to_binary(resp)
+    [h | _] = String.split(resp)
+    case h do
+      "ok" ->
+        {:ok, String.slice(resp, 3..-1)}
+      "error" ->
+        {:error, String.slice(resp, 6..-1)}
+    end
+  end
 
 end
