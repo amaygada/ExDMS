@@ -214,9 +214,73 @@ defmodule Master.Operations do
   end
 
 
+  def pread_operation(rest, socket) do
+    [dfs_path_parent, dfs_path_file] = rest
+    case Database.FileAccess.does_file_exist([folder_path: dfs_path_parent, file_name: dfs_path_file]) do
+      {:ok, _, [file_details | _]} ->
+        {File_Access_Table, _, _, _, size, _} = file_details
+        case size do
+          0 ->
+            {:error, "This dfs file path is empty. Cannot read an empty file."}
+          _ ->
+            create_fair_read_plan(size, dfs_path_parent<>dfs_path_file)
+        end
+      {:error, _} ->
+        {:error, "Invalid DFS path"}
+    end
+  end
+
+
+
+
+
+
   ################################################################################################################################################
   # HELPER FUNCTIONS FOR OPERATIONS WILL BE DEFINED HERE
 
+  #################################### PREAD HELPER ################################################################
+  defp find_workers([], dfs_path, ll), do: ll
+  defp find_workers([{w,_} | rest], dfs_path, ll) do
+    case Database.Chunk.find_workers([file_path: dfs_path, worker_id: w]) do
+      {:ok, _, []} ->
+        find_workers(rest, dfs_path, ll)
+      {:ok, _, files} ->
+        find_workers(rest, dfs_path, ll++[w])
+    end
+  end
+
+  def create_fair_read_plan(file_size, dfs_path) do
+    node_list = Network.Config.get_node_list()
+    node_reverse_map = Network.Config.get_reverse_node_map()
+    worker_list = Master.Operations.populate_worker_map(node_list, node_reverse_map, [])
+
+    # find which workers have file, if 3 have then divide in 3, or 2 or 1
+    worker_list = find_workers(worker_list, dfs_path, [])
+
+    #find total blocks in file
+    chunk_size = Master.Config.get_chunk_size()
+    num_blocks = file_size/chunk_size
+    num_blocks = cond do
+      num_blocks==trunc(num_blocks) ->
+        trunc(num_blocks)
+      true ->
+        trunc(num_blocks) + 1
+      end
+
+    cond do
+      length(worker_list) <2 ->
+        {:error, "Not enough workers available for read"}
+      true->
+        {:ok, %{"worker_list" => worker_list, "num_blocks" => num_blocks}}
+    end
+  end
+
+
+  ###############################################################################################################################
+
+
+
+  ########################################### CPTOLOCAL HELPER ########################################################3
   defp loop_sequences([], _, _, _, plan_map, _), do: {:ok, plan_map}
   defp loop_sequences([h|rest], {[],[]}, queue_copy, dfs_path, plan_map, count) do
     case count do
@@ -320,6 +384,10 @@ defmodule Master.Operations do
     end
   end
 
+  ###############################################################################################################################
+
+
+  ################################################## CP FROM LOCAL HELPER #######################################################
 
   @doc """
   Function to populate a list of tuples
@@ -380,7 +448,7 @@ defmodule Master.Operations do
   end
 
   defp loop_queue(_, combination_map, _, 0, _) do
-    IO.inspect(combination_map)
+    # IO.inspect(combination_map)
     {:ok, combination_map}
   end
   defp loop_queue(queue, combination_map,worker_map, file_size, chunk_size) when file_size<chunk_size do
@@ -442,5 +510,7 @@ defmodule Master.Operations do
         {:error, "Not enough space to store this file in the DFS"}
     end
   end
+
+  ###############################################################################################################################
 
 end

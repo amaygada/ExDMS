@@ -30,6 +30,8 @@ defmodule Parser.Parse do
         {:cpFromLocal, rest}
       "cpToLocal" ->
         {:cpToLocal, rest}
+      "pread" ->
+        {:pread, rest}
       _ ->
         {:invalid}
     end

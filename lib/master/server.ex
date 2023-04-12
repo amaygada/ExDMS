@@ -162,4 +162,13 @@ defmodule Master.TCPServer do
         write_line("error "<>reason<>" \n", socket)
     end
   end
+
+  defp handle_request({:pread, rest}, socket) do
+    case Master.Operations.pread_operation(rest, socket) do
+      {:ok, reply} ->
+        write_line("ok "<>Jason.encode!(reply)<>" \n", socket)
+      {:error, reason} ->
+        write_line("error "<>reason<>" \n", socket)
+    end
+  end
 end
