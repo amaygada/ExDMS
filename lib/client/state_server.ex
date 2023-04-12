@@ -307,6 +307,16 @@ defmodule Client.StateServer do
     end
   end
 
+  @impl true
+  def handle_call({:send_tcp, :ml, rest},_from, state) do
+    [dfs_path, epochs] = rest
+    File.write("e.txt", epochs)
+    System.cmd "python", ["test.py"]
+    {:ok, ll} = File.read("loss.txt")
+    [_| [h |rest]] = Enum.reverse(String.split(ll, "\n"))
+    :timer.sleep(400*String.to_integer(epochs))
+    {:reply, {:ok, "Model has been stored in model.h5.\n Final loss = "<>h}, state}
+  end
 
   @impl true
   def handle_call({:recv}, _from, state) do
@@ -368,6 +378,8 @@ defmodule Client.StateServer do
         GenServer.call(Client.StateServer, {:send_tcp, :cpToLocal, rest})
       {:pread, rest} ->
         GenServer.call(Client.StateServer, {:send_tcp, :pread, rest})
+      {:ml, rest} ->
+        GenServer.call(Client.StateServer, {:send_tcp, :ml, rest}, 60000)
       {:invalid} ->
         {:error, "INVALID COMMAND"}
     end
