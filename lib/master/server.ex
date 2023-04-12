@@ -145,4 +145,21 @@ defmodule Master.TCPServer do
     end
   end
 
+  defp handle_request({:cpFromLocal, rest}, socket) do
+    case Master.Operations.cpFromLocal_operation(rest, socket) do
+      {:ok, reply} ->
+        write_line("ok "<>Jason.encode!(reply)<>" \n", socket)
+      {:error, reason} ->
+        write_line("error "<>reason<>" \n", socket)
+    end
+  end
+
+  defp handle_request({:cpToLocal, rest}, socket) do
+    case Master.Operations.cpToLocal_operation(rest, socket) do
+      {:ok, reply} ->
+        write_line("ok "<>Jason.encode!(reply)<>" \n", socket)
+      {:error, reason} ->
+        write_line("error "<>reason<>" \n", socket)
+    end
+  end
 end

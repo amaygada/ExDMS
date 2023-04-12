@@ -57,13 +57,34 @@ defmodule Database.Chunk do
             attributes[:sequence_id],
             :_,
             attributes[:file_path],
+            attributes[:worker_id],
             :_,
-            attributes[:replica_number],
             :_
           }
         )
       end
     ) |> Database.Init.check_transactions()
+  end
+
+
+  @doc """
+    Allows reading a particular file, given the file path, sequence id and replica number
+    Takes as input a keyword list
+    Eg. read_file_in_sequence([sequence_id: 1, file_path: "/home/folder1/a.txt", replica_number: 1])
+  """
+  def dirty_read_file_in_sequence(attributes) do
+      Mnesia.match_object(
+        {
+          Chunk_Table,
+          :_,
+          attributes[:sequence_id],
+          :_,
+          attributes[:file_path],
+          :_,
+          attributes[:replica_number],
+          :_
+        }
+      )
   end
 
 
@@ -94,4 +115,37 @@ defmodule Database.Chunk do
     ) |> Database.Init.check_transactions()
   end
 
+
+  @doc """
+    Allows reading a particular file, given the file path, sequence id and replica number
+    Takes as input a keyword list
+    Eg. read_file_in_sequence([sequence_id: 1, file_path: "/home/folder1/a.txt", replica_number: 1])
+  """
+  def check_if_replica_is_valid(attributes) do
+    trans = Mnesia.transaction(
+      fn ->
+        Mnesia.match_object(
+          {
+            Chunk_Table,
+            :_,
+            :_,
+            :_,
+            attributes[:file_path],
+            :_,
+            attributes[:replica_number],
+            :_
+          }
+        )
+      end
+    ) |> Database.Init.check_transactions()
+
+    case trans do
+      {:ok, :read_successful, []} ->
+        {:ok, []}
+      {:ok, :read_successful, files} ->
+        {:ok, files}
+      _ ->
+        trans
+    end
+  end
 end

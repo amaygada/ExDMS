@@ -26,6 +26,10 @@ defmodule Parser.Parse do
         {:touch, rest}
       "cd" ->
         {:cd, rest}
+      "cpFromLocal" ->
+        {:cpFromLocal, rest}
+      "cpToLocal" ->
+        {:cpToLocal, rest}
       _ ->
         {:invalid}
     end

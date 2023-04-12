@@ -55,6 +55,26 @@ defmodule Database.FileAccess do
 
 
   @doc """
+    Given existing file details, this function updates file record in mnesia
+  """
+  def update_file_record(attributes) do
+    trans = Mnesia.transaction(
+      fn ->
+        Mnesia.write(
+              {
+                File_Access_Table,
+                attributes[:id],
+                attributes[:folder_path],
+                attributes[:file_name],
+                attributes[:file_size],
+                attributes[:type]
+              }
+            )
+      end
+    ) |> Database.Init.check_transactions()
+  end
+
+  @doc """
     Given Folder Path, this function returns all the files in it
     Takes as input Folder Path
   """
