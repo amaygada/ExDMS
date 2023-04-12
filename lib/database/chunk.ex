@@ -57,8 +57,8 @@ defmodule Database.Chunk do
             attributes[:sequence_id],
             :_,
             attributes[:file_path],
+            attributes[:worker_id],
             :_,
-            attributes[:replica_number],
             :_
           }
         )

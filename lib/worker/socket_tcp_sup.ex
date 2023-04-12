@@ -8,6 +8,7 @@ defmodule Worker.SocketTCPSupervisor do
   @impl true
   def init(:ok) do
     children = [
+      {DynamicSupervisor, name: Worker.DynamicTCPSupervisor, strategy: :one_for_one},
       {Worker.SocketServer, name: Worker.SocketServer}
     ]
 

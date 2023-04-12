@@ -17,6 +17,8 @@ defmodule Network.Config do
   """
   def get_node_map(), do: %{"master" => :"master@127.0.0.1", "workera" => :"workera@127.0.0.1", "workerb" => :"workerb@127.0.0.1", "workerc" => :"workerc@127.0.0.1"}
 
+  def get_space_map(), do: %{"workera" => 75000000, "workerb" => 75000000, "workerc" => 75000000}
+
   @doc """
     Node map defines which node in the DFS has what node name
   """

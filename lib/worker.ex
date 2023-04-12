@@ -31,12 +31,10 @@ defmodule Worker do
     end
     IO.puts("")
 
-    a = Database.WorkerTable.write_to_worker_table([worker_id: Network.Config.get_reverse_node_map()[node()], space_remaining: 500, space_used: 500, ram_size: 512])
+    worker_id = Network.Config.get_reverse_node_map()[node()]
+    a = Database.WorkerTable.write_to_worker_table([worker_id: worker_id, space_remaining: Network.Config.get_space_map()[worker_id], space_used: 500, ram_size: 512])
     case a do
       {:ok, _} ->
-        IO.puts("SPACE REMAINING: "<>"500"<>" Mb")
-        IO.puts("USED: "<>"500"<>" Mb")
-        IO.puts("RAM: "<>"512"<>" Mb")
         IO.puts("WORKER METADATA WRITTEN TO MNESIA")
         IO.puts("")
       _ ->

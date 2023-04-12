@@ -10,6 +10,7 @@ defmodule Worker.ListenTCPSupervisor do
     children = [
       {Task.Supervisor, name: Worker.ListenServer.TaskSupervisor},
       {Worker.ListenServer, name: Worker.ListenServer},
+      {Task.Supervisor, name: Worker.WriteTaskSupervisor},
       {Worker.SocketTCPSupervisor, name: Worker.SocketTCPSupervisor}
     ]
 
