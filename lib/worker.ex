@@ -46,7 +46,7 @@ defmodule Worker do
 
     children = [
       {Worker.ChunkServer, name: Worker.ChunkServer},
-      {Task, fn -> Worker.ChunkServer.connect(Worker.ChunkServer) end},
+      # {Task, fn -> Worker.ChunkServer.connect(Worker.ChunkServer) end},
       {Worker.ListenTCPSupervisor, name: Worker.TCPSupervisor}
     ]
 

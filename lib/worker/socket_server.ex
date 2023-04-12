@@ -65,7 +65,7 @@ defmodule Worker.SocketServer do
 
   @impl true
   def handle_call({:recv}, _from, state) do
-    case :gen_tcp.recv(state["socket"], 0, 5000) do
+    case :gen_tcp.recv(state["socket"], 0) do
       {:ok, data} ->
         {:reply, {:ok, data}, state}
       {:error, :closed} ->
@@ -85,7 +85,7 @@ defmodule Worker.SocketServer do
       {{:value, val}, queue} ->
         {:reply, {:ok, val}, %{state | "recv_queue" => queue}}
       {:empty, _} ->
-        case :gen_tcp.recv(state["socket"], 0, 5000) do
+        case :gen_tcp.recv(state["socket"], 0) do
           {:ok, data} ->
             data = Kernel.inspect(data)
             data = String.replace(data, "'", "")
@@ -149,7 +149,7 @@ defmodule Worker.SocketServer do
 
 
   def receive_message(socket) do
-    case :gen_tcp.recv(socket, 0, 5000) do
+    case :gen_tcp.recv(socket, 0) do
       {:ok, data} ->
         {:ok, data}
       {:error, :closed} ->

@@ -69,6 +69,11 @@ defmodule Worker.ListenServer do
     {:ok, _pid} = Task.Supervisor.start_child(Worker.WriteTaskSupervisor, fn -> read_sequentially(gentcp_socket, data) end)
   end
 
+  defp handle_request(gentcp_socket, %{"type" => "read async"} = data) do
+    # IO.inspect(data)
+    {:ok, _pid} = Task.Supervisor.start_child(Worker.WriteTaskSupervisor, fn -> read_async(gentcp_socket, data) end)
+  end
+
 
   # @doc """
   #   Read message from client over TCP
@@ -99,6 +104,15 @@ defmodule Worker.ListenServer do
   end
 
 
+  def read_async(gentcp_socket, data) do
+    #read_cid
+    cid = data["cid"]
+
+    #respons with chuk sequence
+    seq = data["seq"]
+  end
+
+
   @doc """
     Sends chunks to file
   """
@@ -108,7 +122,7 @@ defmodule Worker.ListenServer do
     case Database.Chunk.read_file_in_sequence([sequence_id: h, file_path: dfs_path, worker_id: worker]) do
       {:ok, _, [file]} ->
         {_, cid, _, _, _, _, _, _} = file
-        IO.inspect("data/"<>worker<>"/"<>cid<>".txt")
+        # IO.inspect("data/"<>worker<>"/"<>cid<>".txt")
         case File.read("data/"<>worker<>"/"<>cid<>".txt") do
           {:ok, val} ->
             write_line("ok "<>Jason.encode!(val), gentcp_socket)
