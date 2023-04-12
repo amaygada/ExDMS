@@ -5,7 +5,7 @@ defmodule Client.MixProject do
     [
       app: :client,
       version: "0.1.0",
-      elixir: "~> 1.7.4",
+      elixir: "~> 1.14.3",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -23,7 +23,10 @@ defmodule Client.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
-      { :benchwarmer, "~> 0.0.2" }
+      { :benchwarmer, "~> 0.0.2" },
+      {:axon, "~> 0.2.0"},
+      {:exla, "~> 0.3.0"},
+      {:nx, "~> 0.3.0"}
     ]
   end
 end

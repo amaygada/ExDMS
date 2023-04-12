@@ -27,6 +27,8 @@ defmodule Parser.Parse do
         {:cpFromLocal, rest}
       "cpToLocal" ->
         {:cpToLocal, rest}
+      "pread" ->
+        {:pread, rest}
       _ ->
         {:invalid}
     end
@@ -167,6 +169,15 @@ defmodule Parser.Parse do
         {:ok, local_path, extract_parent_child_from_path(dfs_path, cd)}
       _ ->
         {:error, "cpToLocal takes 2 arguments: local_path, dfs_path"}
+    end
+  end
+
+  def break({:pread, rest, cd}) do
+    case rest do
+      [dfs_path] ->
+        {:ok, extract_parent_child_from_path(dfs_path, cd)}
+      _ ->
+        {:error, "pread takes 1 argument: dfs_path"}
     end
   end
 

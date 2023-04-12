@@ -241,6 +241,7 @@ defmodule Client.StateServer do
 
   @impl true
   def handle_call({:send_tcp, :cpToLocal, rest}, _from, state) do
+    t = :os.system_time(:millisecond)
     case Parser.Parse.break({:cpToLocal, rest, state["current_directory"]}) do
       {:ok, local_path, {dfs_path_parent, dfs_path_file}} ->
         #check if local file path doesn't exist exists
@@ -258,7 +259,8 @@ defmodule Client.StateServer do
                     case output do
                       {:ok, data} ->
                         Client.Helper.read_files_sequentially(Jason.decode!(data), local_path, dfs_path_parent<>dfs_path_file)
-                        {:reply, {:ok, "File touch done"}, state}
+                        IO.inspect(:os.system_time(:millisecond) - t)
+                        {:reply, {:ok, "File download complete"}, state}
                       {:error, e} ->
                         {:reply, {:error, e}, state}
                     end
@@ -277,8 +279,38 @@ defmodule Client.StateServer do
 
 
   @impl true
+  def handle_call({:send_tcp, :pread, rest},_from, state) do
+    case Parser.Parse.break({:pread, rest, state["current_directory"]}) do
+      {:ok, {dfs_parent_path, dfs_file_path}} ->
+        reply = :gen_tcp.send(state["socket"], "pread "<>dfs_parent_path<>" "<>dfs_file_path<>"\n")
+        case reply do
+          :ok ->
+            case receive_message(state["socket"]) do
+              {:ok, data} ->
+                output = Parser.Parse.parse_response(data)
+                case output do
+                  {:ok, data} ->
+                    Client.Helper.parallel_read(Jason.decode!(data), dfs_parent_path<>dfs_file_path)
+                    {:reply, {:ok, "File touch done"}, state}
+                  {:error, e} ->
+                    {:reply, {:error, e}, state}
+                end
+              {:error, r} ->
+                {:reply, {:error, r}, state}
+            end
+          _ ->
+            IO.puts(IO.ANSI.red() <> "Connection has been terminated. Master seems to be down :(" <> IO.ANSI.reset())
+            {:reply, {:error, reply}, state}
+        end
+      {:error, e} ->
+        {:reply, {:error, e}, state}
+    end
+  end
+
+
+  @impl true
   def handle_call({:recv}, _from, state) do
-    case :gen_tcp.recv(state["socket"], 0, 5000) do
+    case :gen_tcp.recv(state["socket"], 0) do
       {:ok, data} ->
         {:reply, {:ok, data}, state}
       {:error, :closed} ->
@@ -334,6 +366,8 @@ defmodule Client.StateServer do
         GenServer.call(Client.StateServer, {:send_tcp, :cpFromLocal, rest})
       {:cpToLocal, rest} ->
         GenServer.call(Client.StateServer, {:send_tcp, :cpToLocal, rest})
+      {:pread, rest} ->
+        GenServer.call(Client.StateServer, {:send_tcp, :pread, rest})
       {:invalid} ->
         {:error, "INVALID COMMAND"}
     end
@@ -350,7 +384,7 @@ defmodule Client.StateServer do
 
 
   def receive_message(socket) do
-    case :gen_tcp.recv(socket, 0, 5000) do
+    case :gen_tcp.recv(socket, 0) do
       {:ok, data} ->
         {:ok, data}
       {:error, :closed} ->

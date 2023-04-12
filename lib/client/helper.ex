@@ -137,10 +137,10 @@ defmodule Client.Helper do
     Stream.run(s)
 
     #write an async service that checks if all packages have been received
-    task = Task.async(fn -> check_ack(length(plan)) end)
+    task = Task.asc(fn -> check_ack(length(plan)) end)
     Task.await(task)
     #shutdown all open connections
-    task = Task.async(fn -> shutdown_connections(socket_map) end)
+    # task = Task.async(fn -> shutdown_connections(socket_map) end)
     {:write_complete}
   end
 
@@ -178,7 +178,6 @@ defmodule Client.Helper do
               {:ok, data} ->
                 case Parser.Parse.parse_worker_response(data) do
                   {:ok, d} ->
-                    # IO.inspect({"Writing: ", x})
                     IO.write(f, Jason.decode!(d))
                   {:error, e} ->
                     IO.inspect({"Error in reading sequence ", x})
@@ -204,6 +203,43 @@ defmodule Client.Helper do
     read_and_append(f, 1, plan_map, socket_map, dfs_path)
   end
 
+
+
+  defp async_read(file, socket_map, worker, seq) do
+    {_, cid, _, _, _, _, _, _} = file
+    map = %{"type" => "read async", "cid" => cid, "seq" => seq}
+    Client.SocketServer.read_async_operation(socket_map[worker], Jason.encode!(map))
+  end
+
+  defp list_to_queue([], q), do: q
+  defp list_to_queue([h|rest], q) do
+    list_to_queue(rest, :queue.in(h, q))
+  end
+
+  defp pread_loop(_, _, _, [], _), do: {:ok, "read done"}
+  defp pread_loop(queue, {[],[]}, dfs_path, [_|rest], socket_map) do
+    IO.inspect({:error, "unable to find chunk_file"})
+    pread_loop(queue, queue, dfs_path, rest, socket_map)
+  end
+  defp pread_loop(queue, check_queue, dfs_path, [h|rest], socket_map) do
+    {{:value, v}, queue} = :queue.out(queue)
+    queue = :queue.in(v, queue)
+    case Database.Chunk.read_file_in_sequence([file_path: dfs_path, worker_id: v, sequence_id: h]) do
+      {:ok, _, []} ->
+        {{:value, _v}, check_queue} = :queue.out(check_queue)
+        pread_loop(queue, check_queue, dfs_path, [h|rest], socket_map)
+      {:ok, _, [file]} ->
+        async_read(file, socket_map, v, h)
+        pread_loop(queue, queue, dfs_path, rest, socket_map)
+    end
+  end
+
+  def parallel_read(data, dfs_path) do
+    worker_list = data["worker_list"]
+    socket_map = connect_to_all_workers(worker_list, %{})
+    worker_queue = list_to_queue(worker_list, :queue.new)
+    pread_loop(worker_queue, worker_queue, dfs_path, Enum.to_list(1..data["num_blocks"]), socket_map)
+  end
 
 
 end

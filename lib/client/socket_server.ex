@@ -86,6 +86,18 @@ defmodule Client.SocketServer do
   end
 
   @impl true
+  def handle_call({:read_async_operation, message}, _from, state) do
+    reply = :gen_tcp.send(state["socket"], message<>"\n")
+    case reply do
+      :ok ->
+        {:reply, {:ok, :sent}, state}
+      _ ->
+        IO.puts(IO.ANSI.red() <> "Connection has been terminated. Master seems to be down :(" <> IO.ANSI.reset())
+        {:reply, {:error, reply}, state}
+    end
+  end
+
+  @impl true
   def handle_call({:recv}, _from, state) do
     case :gen_tcp.recv(state["socket"], 0) do
       {:ok, data} ->
@@ -106,7 +118,7 @@ defmodule Client.SocketServer do
       {{:value, val}, queue} ->
         {:reply, {:ok, val}, %{state | "recv_queue" => queue}}
       {:empty, _} ->
-        case :gen_tcp.recv(state["socket"], 0, 5000) do
+        case :gen_tcp.recv(state["socket"], 0) do
           {:ok, data} ->
             data = Kernel.inspect(data)
             data = String.replace(data, "'", "")
@@ -170,6 +182,10 @@ defmodule Client.SocketServer do
     GenServer.call(socket, {:read_seq_operation, message})
   end
 
+  def read_async_operation(socket, message) do
+    GenServer.call(socket, {:read_async_operation, message})
+  end
+
   @doc """
     RECEIVE MESSAGES OVER TCP
   """
@@ -186,7 +202,7 @@ defmodule Client.SocketServer do
 
 
   def receive_message(socket) do
-    case :gen_tcp.recv(socket, 0, 5000) do
+    case :gen_tcp.recv(socket, 0) do
       {:ok, data} ->
         {:ok, data}
       {:error, :closed} ->
