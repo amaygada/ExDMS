@@ -10,22 +10,22 @@ defmodule Network.Config do
   @doc """
     Node list defines the list of nodes connected
   """
-  def get_node_list(), do: [:"master@127.0.0.1", :"workera@127.0.0.1", :"workerb@127.0.0.1", :"workerc@127.0.0.1"]
+  def get_node_list(), do: [:"master@192.168.56.105", :"workera@192.168.56.106", :"workerb@192.168.56.107", :"workerc@192.168.56.108"]
 
   @doc """
     Node map defines which node in the DFS has what node name
   """
-  def get_node_map(), do: %{"master" => :"master@127.0.0.1", "workera" => :"workera@127.0.0.1", "workerb" => :"workerb@127.0.0.1", "workerc" => :"workerc@127.0.0.1"}
+  def get_node_map(), do: %{"master" => :"master@192.168.56.105", "workera" => :"workera@192.168.56.106", "workerb" => :"workerb@192.168.56.107", "workerc" => :"workerc@192.168.56.108"}
 
   @doc """
     Node map defines which node in the DFS has what node name
   """
-  def get_reverse_node_map(), do: %{:"master@127.0.0.1" => "master", :"workera@127.0.0.1" => "workera", :"workerb@127.0.0.1" => "workerb", :"workerc@127.0.0.1" => "workerc"}
+  def get_reverse_node_map(), do: %{:"master@192.168.56.105" => "master", :"workera@192.168.56.106" => "workera", :"workerb@192.168.56.107" => "workerb", :"workerc@192.168.56.108" => "workerc"}
 
   @doc """
     IP Map defines which node in the DFS has what IP
   """
-  def get_ip_map, do: %{"master" => {127,0,0,1}, "workera" => {127,0,0,1}, "workerb" => {127,0,0,1}, "workerc" => {127,0,0,1}}
+  def get_ip_map, do: %{"master" => {192,168,56,105}, "workera" => {192,168,56,106}, "workerb" => {192,168,56,107}, "workerc" => {192,168,56,108}}
 
   @doc """
     Port Map defines which node listens on what port (this is temporary as we want to mimic a multiple node scenario)
@@ -35,7 +35,7 @@ defmodule Network.Config do
   @doc """
     Get master IP
   """
-  def get_master_ip(), do: {127,0,0,1}
+  def get_master_ip(), do: {192,168,56,105}
 
   @doc """
     Get TCP port
